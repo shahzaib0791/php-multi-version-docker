@@ -60,4 +60,4 @@ This project uses Docker Compose to orchestrate multiple containers:
 Contributions are welcome! Fork the repository, make changes, and submit pull requests.
 
 ## License
-MIT
+[MIT](LICENSE)
