@@ -1,0 +1,45 @@
+# Use PHP 7.4 with Apache as the base image
+FROM php:7.4-apache
+
+# Update and install dependencies for required extensions
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libxml2-dev \
+    libzip-dev \
+    zlib1g-dev \
+    curl \
+    libicu-dev \
+    bash \
+    git \
+    unzip \
+    libxslt1-dev \
+    && apt-get clean
+
+# Install required PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd pdo pdo_mysql zip mysqli opcache xsl sockets\
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php \
+    && mv composer.phar /usr/local/bin/composer
+
+# Set the working directory
+WORKDIR /var/www/html
+
+# Enable Apache mod_rewrite for pretty URLs
+RUN a2enmod rewrite
+
+# Copy the entrypoint script into the container
+COPY ./entrypoint.sh /entrypoint.sh
+
+# Make sure the entrypoint script is executable
+RUN chmod +x /entrypoint.sh
+
+# Expose port 80
+EXPOSE 80
+
+# Set entrypoint to the entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

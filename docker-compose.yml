@@ -1,0 +1,106 @@
+version: '3.3'
+
+services:
+ # Nginx Reverse Proxy
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"  # Expose Nginx on port 80
+    networks:
+      - app-network
+    depends_on:
+      - php74
+      - php80  # Ensure Nginx waits for PHP containers to start
+      
+  # PHP 8.0 Service
+  php80:
+    container_name: php80
+    build:
+      context: .
+      dockerfile: Dockerfile.80
+    ports:
+      - "8080:80"  # Use port 8080 to avoid conflicts with other services
+    volumes:
+      - ./projects:/var/www/html  # Mount the project directory
+      - ~/.ssh:/root/.ssh   # Mount SSH keys
+      - ./virtualhosts/php80.conf:/etc/apache2/sites-available/php80.conf  # Mount virtual host config
+    networks:
+      - app-network
+
+  # PHP 7.4 Service
+  php74:
+    container_name: php74
+    build:
+      context: .
+      dockerfile: Dockerfile.74
+    ports:
+      - "8074:80"  # Use port 8074 to avoid conflicts with other services
+    volumes:
+      - ./projects:/var/www/html  # Mount the project directory
+      - ~/.ssh:/root/.ssh   # Mount SSH keys
+      - ./virtualhosts/php74.conf:/etc/apache2/sites-available/php74.conf  # Mount virtual host config
+    networks:
+      - app-network
+
+  # MySQL Service with persistent storage
+  mysql:
+    container_name: mysql
+    image: mysql:5.7  # You can choose a different version if needed
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword  # Set the MySQL root password
+      MYSQL_DATABASE: my_database  # Set the name of the default database
+    volumes:
+      - mysql_data:/var/lib/mysql  # Mount the MySQL data directory to a persistent volume
+    ports:
+      - "3306:3306"  # Expose MySQL port
+    networks:
+      - app-network
+
+  # phpMyAdmin Service to manage MySQL through a web interface
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: mysql  # Set phpMyAdmin to connect to the MySQL service
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpassword  # Set the same root password as MySQL service
+    ports:
+      - "8081:80"  # Expose phpMyAdmin on port 8081
+    networks:
+      - app-network
+
+  # Redis Service
+  redis:
+    container_name: redis
+    image: redis:latest  # Use the latest official Redis image
+    volumes:
+      - redis_data:/data  # Persist Redis data using a volume
+    ports:
+      - "6379:6379"  # Expose Redis port
+    networks:
+      - app-network
+
+  # RabbitMQ Service with management plugin
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management  # Use the official RabbitMQ image with management plugin
+    ports:
+      - "15672:15672"  # Management UI (HTTP API)
+      - "5672:5672"    # AMQP port for communication with other services
+    networks:
+      - app-network
+
+# Shared Network
+networks:
+  app-network:
+    driver: bridge
+
+# Volumes for persistent MySQL and Redis data
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
